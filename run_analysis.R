@@ -16,4 +16,38 @@ features <- fread(file.path(path, "UCI HAR Dataset/features.txt"),
 selected_features <- grep("(mean|std)\\(\\)", features$featureName)
 selected_feature_names <- gsub("[()]", "", features[selected_features, featureName])
 
+# Load and prepare the training dataset
+train_data <- fread(file.path(path, "UCI HAR Dataset/train/X_train.txt"))[, ..selected_features]
+setnames(train_data, colnames(train_data), selected_feature_names)
+train_activity <- fread(file.path(path, "UCI HAR Dataset/train/Y_train.txt"), 
+                        col.names = "Activity")
+train_subject <- fread(file.path(path, "UCI HAR Dataset/train/subject_train.txt"), 
+                       col.names = "SubjectNum")
+train <- cbind(train_subject, train_activity, train_data)
 
+# Load and prepare the testing dataset
+test_data <- fread(file.path(path, "UCI HAR Dataset/test/X_test.txt"))[, ..selected_features]
+setnames(test_data, colnames(test_data), selected_feature_names)
+test_activity <- fread(file.path(path, "UCI HAR Dataset/test/Y_test.txt"), 
+                       col.names = "Activity")
+test_subject <- fread(file.path(path, "UCI HAR Dataset/test/subject_test.txt"), 
+                      col.names = "SubjectNum")
+test <- cbind(test_subject, test_activity, test_data)
+
+# Combine the training and testing datasets
+combined_data <- rbind(train, test)
+
+# Replace activity labels with descriptive activity names
+combined_data$Activity <- factor(combined_data$Activity, 
+                                 levels = activity_labels$classLabel, 
+                                 labels = activity_labels$activityName)
+
+# Convert SubjectNum to a factor
+combined_data$SubjectNum <- as.factor(combined_data$SubjectNum)
+
+# Reshape data to create a tidy dataset
+tidy_data <- melt(combined_data, id.vars = c("SubjectNum", "Activity"))
+tidy_data <- dcast(tidy_data, SubjectNum + Activity ~ variable, mean)
+
+# Write the tidy dataset to a file
+fwrite(tidy_data, file = "tidyData.txt", quote = FALSE)
